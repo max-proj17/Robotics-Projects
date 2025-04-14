@@ -18,6 +18,8 @@ int i = 3200;
 TaskHandle_t sensorTaskHandle = NULL;
 TaskHandle_t motorTaskHandle = NULL;
 
+
+
 void sensorTask(void *pvParameters) {
   for (;;) {
     int adcValue = analogRead(AS5600ADCPIN);
@@ -25,11 +27,12 @@ void sensorTask(void *pvParameters) {
     float angleDegrees = (voltage / VREF) * 360.0;
     static float filteredAngle = angleDegrees;
     filteredAngle = ALPHA * filteredAngle + (1 - ALPHA) * angleDegrees;
-    Serial.print(0);           // Minimum Y-axis value
+
+    Serial.print(filteredAngle, 5);   // Print StdDev for filtered angle
+
+    Serial.print(0.0, 5);  // Print StdDev for raw angle
     Serial.print(",");
-    Serial.print(360);         // Maximum Y-axis value
-    Serial.print(",");
-    Serial.println(filteredAngle, 1);
+    Serial.println(360.0, 5);  // Print StdDev for raw angle
     vTaskDelay(pdMS_TO_TICKS(2)); // 500 Hz
   }
 }

@@ -1,0 +1,30 @@
+float calculateStdDev(float* buffer, int size) {
+  // Calculate the mean
+  float sum = 0;
+  for (int i = 0; i < size; i++) {
+    sum += buffer[i];
+  }
+  float mean = sum / size;
+
+  // Calculate the variance
+  float varianceSum = 0;
+  for (int i = 0; i < size; i++) {
+    varianceSum += (buffer[i] - mean) * (buffer[i] - mean);
+  }
+
+  // Return the standard deviation
+  return sqrt(varianceSum / size);
+}
+
+float normalizeAngleDifference(float prevAngle, float currentAngle) {
+    float diff = currentAngle - prevAngle;
+
+    // Handle wraparound at 360 degrees
+    if (diff > 180) {
+        diff -= 360;  // Wrap around in the positive direction
+    } else if (diff < -180) {
+        diff += 360;  // Wrap around in the negative direction
+    }
+
+    return diff;
+}
