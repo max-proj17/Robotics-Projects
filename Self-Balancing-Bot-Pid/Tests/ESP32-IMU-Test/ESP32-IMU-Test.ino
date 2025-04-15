@@ -1,87 +1,96 @@
 #include <Arduino.h>
-#include <SPI.h>
-#include <SparkFunMPU9250-DMP.h>
+#include <Wire.h>
+#include <MPU9250_asukiaaa.h>
 
-// MPU9250 SPI setup
-#define PIN_CS   7
-#define PIN_SCK  15 // SCL
-#define PIN_MISO 8 // ADO
-#define PIN_MOSI 16 // SDA
-#define PIN_INT  3  // INT pin from MPU9250
+// Only i2c, no interrupts
 
-MPU9250_DMP imu;
-SemaphoreHandle_t imuSemaphore;
+// Pin Def
+#define PIN_SCL    15
+#define PIN_SDA    16
+#define PIN_INT    3
+#define GYRO_ALPHA 0.7
+float filteredGyroX = 0, filteredGyroY = 0, filteredGyroZ = 0;
 
-// ISR: Called when MPU-9250 triggers an interrupt
-void IRAM_ATTR imuISR() {
-  // Tracks if a task was awoken in the ISR
-  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-  xSemaphoreGiveFromISR(imuSemaphore, &xHigherPriorityTaskWoken);
+#define MPU_ADDRESS 0x68  // ADO low = 0x68
 
-  // If the samephore awakens a higher prioirty task,
-  // execute that task after this one finishes
-  if (xHigherPriorityTaskWoken) {
-    portYIELD_FROM_ISR();
-  }
-}
 
-void sensorTask(void *pvParameters) {
-  for (;;) {
-    // Wait for interrupt to signal new data
-    if (xSemaphoreTake(imuSemaphore, portMAX_DELAY) == pdTRUE) {
-      if (imu.fifoAvailable()) {
-        if (imu.dmpUpdateFifo() == INV_SUCCESS) {
-          // Use only pitch/roll from gyro + accel (no magnetometer)
-          Serial.print("Pitch: ");   // Angles in degrees
-          Serial.print(imu.pitch, 2);
-          Serial.print(" | Roll: ");
-          Serial.print(imu.roll, 2);
-          Serial.print(" | GyroX: "); 
-          Serial.print(imu.calcGyro(imu.gx), 2); // Angular Speed
-          Serial.print(" | GyroY: ");
-          Serial.println(imu.calcGyro(imu.gy), 2);
-        }
-      }
-    }
+MPU9250_asukiaaa imu;
+TaskHandle_t imuTaskHandle = nullptr;
+float angleX = 0.0, angleY = 0.0, angleZ = 0.0;
+
+
+void imuTask(void *parameter) {
+  unsigned long lastTime = millis();
+  while (true) {
+    imu.accelUpdate();
+    imu.gyroUpdate();
+
+    // Delta time
+    unsigned long now = millis();
+    float dt = (now - lastTime) / 1000.0;
+    lastTime = now;
+
+    // Raw gyro readings
+    float gx = imu.gyroX();
+    float gy = imu.gyroY();
+    float gz = imu.gyroZ();
+
+    // Apply digital LPF
+    filteredGyroX = GYRO_ALPHA * filteredGyroX + (1 - GYRO_ALPHA) * gx;
+    filteredGyroY = GYRO_ALPHA * filteredGyroY + (1 - GYRO_ALPHA) * gy;
+    filteredGyroZ = GYRO_ALPHA * filteredGyroZ + (1 - GYRO_ALPHA) * gz;
+
+    // Integration to get angle (in degrees)
+    angleX += filteredGyroX * dt;
+    angleY += filteredGyroY * dt;
+    angleZ += filteredGyroZ * dt;
+
+
+
+    // Serial.print(imu.accelX()); Serial.print('\t');
+    // Serial.print(imu.accelY()); Serial.print('\t');
+    // // Serial.print(imu.accelZ()); Serial.print('\t');
+    // Serial.print(filteredGyroX); Serial.print('\t');
+    // Serial.print(filteredGyroY); Serial.print('\t');
+    // Serial.print(filteredGyroZ); Serial.print('\t');
+    // Serial.print(100);    Serial.print('\t');
+    // Serial.println(-100);
+    // Output angles
+    Serial.print(angleX); Serial.print('\t');
+    Serial.print(angleY); Serial.print('\t');
+    Serial.print(angleZ); Serial.print('\t');
+    Serial.print(0);    Serial.print('\t');
+    Serial.println(360);
+
+
+    vTaskDelay(pdMS_TO_TICKS(20)); // ~50Hz
   }
 }
 
 void setup() {
   Serial.begin(115200);
+  // Serial.println("AccelX\tAccelY\tAccelZ\tGyroX\tGyroY\tGyroZ");
   delay(1000);
 
-  // Create binary semaphore
-  imuSemaphore = xSemaphoreCreateBinary();
+  Wire.begin(PIN_SDA, PIN_SCL);
+  imu.setWire(&Wire);
+  imu.beginAccel();
+  imu.beginGyro();
 
-  // Initialize SPI
-  SPI.begin(PIN_SCK, PIN_MISO, PIN_MOSI, PIN_CS);
-  if (imu.begin(SPI, PIN_CS) != INV_SUCCESS) {
-    Serial.println("MPU9250 connection failed!");
-    while (1);
-  }
+  Serial.println("MPU9250 initialized (Accel + Gyro only).");
 
-  imu.setSensors(INV_XYZ_GYRO | INV_XYZ_ACCEL);
-  // sets full scale range of sensors
-  imu.setGyroFSR(2000);
-  imu.setAccelFSR(2);
-  // Sets Low Pass Filter to block high frequency noise
-  imu.setLPF(5);
-  imu.setSampleRate(50);
-
-  imu.enableFifo(true);
-  // Sensor Fusion: Fuse only gyrocope and accelerometer
-  // DMP_FEATURE_GYRO_CAL: DMP will track and adjust for small drifts in gyroscope readings
-  // DMP_FEATURE_6X_LP_QUAT: Sensor will output a four-part number used to describe 3-d rotations/orientations
-  imu.dmpBegin(DMP_FEATURE_6X_LP_QUAT | DMP_FEATURE_GYRO_CAL, 10);
-
-  // Attach interrupt from MPU
-  pinMode(PIN_INT, INPUT);
-  attachInterrupt(digitalPinToInterrupt(PIN_INT), imuISR, RISING);
-
-  // Start sensor task
-  xTaskCreatePinnedToCore(sensorTask, "IMU Sensor Task", 4096, NULL, 2, NULL, 1);
+  xTaskCreatePinnedToCore(
+    imuTask,
+    "IMU Task",
+    4096,
+    NULL,
+    1,
+    &imuTaskHandle,
+    1
+  );
 }
 
-void loop() {
 
+void loop() {
+  //vTaskDelay(pdMS_TO_TICKS(1000)); 
 }
