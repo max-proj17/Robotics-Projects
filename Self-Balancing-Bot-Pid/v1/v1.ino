@@ -10,7 +10,7 @@ const int ENPIN = 10;    // Pin connected to ENABLE
 const int AS5600ADCPIN = 12;
 const int ADCRESOLUTION = 4095; // 12-bit ADC so max values it can produce: 2^12 = 4096
 const int VREF = 3.3;  // ESP32 default voltage reference  
-const int ALPHA = 0.3; // Digital LPF strength (higher = smoother, but slower)
+const int ALPHA = 0.5; // Digital LPF strength (higher = smoother, but slower)
 
 int i = 3200;
 
@@ -28,11 +28,13 @@ void sensorTask(void *pvParameters) {
     static float filteredAngle = angleDegrees;
     filteredAngle = ALPHA * filteredAngle + (1 - ALPHA) * angleDegrees;
 
-    Serial.print(filteredAngle, 5);   // Print StdDev for filtered angle
+    
 
     Serial.print(0.0, 5);  // Print StdDev for raw angle
     Serial.print(",");
-    Serial.println(360.0, 5);  // Print StdDev for raw angle
+    Serial.print(360.0, 5);  // Print StdDev for raw angle
+    Serial.print(",");
+    Serial.println(filteredAngle, 5);   // Print StdDev for filtered angle
     vTaskDelay(pdMS_TO_TICKS(2)); // 500 Hz
   }
 }
