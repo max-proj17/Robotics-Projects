@@ -1,0 +1,50 @@
+# General
+*.log
+*.swp
+*.swo
+*.bak
+*~
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# VSCode / IDE
+.vscode/
+.idea/
+*.code-workspace
+
+# CMake / Build Artifacts
+build/
+install/
+log/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# ROS2 workspace
+Simulation/ros2_ws/build/
+Simulation/ros2_ws/install/
+Simulation/ros2_ws/log/
+
+# Docker artifacts
+*.img
+*.container
+*.tar
+*.pid
+
+# ROS2 generated files
+*.launch.pyc
+*.rviz
+*.db
+
+# Simulation logs or outputs
+Simulation/**/*.world
+Simulation/**/*.log
+Simulation/**/*.csv
+Simulation/**/*.bag
+Simulation/**/*.bag.*
