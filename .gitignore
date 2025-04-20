@@ -27,9 +27,9 @@ cmake_install.cmake
 Makefile
 
 # ROS2 workspace
-Simulation/ros2_ws/build/
-Simulation/ros2_ws/install/
-Simulation/ros2_ws/log/
+Self-Balancing-Bot-Pid/Simulation/ros2_ws/build/
+Self-Balancing-Bot-Pid/Simulation/ros2_ws/install/
+Self-Balancing-Bot-Pid/Simulation/ros2_ws/log/
 
 # Docker artifacts
 *.img
@@ -43,8 +43,8 @@ Simulation/ros2_ws/log/
 *.db
 
 # Simulation logs or outputs
-Simulation/**/*.world
-Simulation/**/*.log
-Simulation/**/*.csv
-Simulation/**/*.bag
-Simulation/**/*.bag.*
+Self-Balancing-Bot-Pid/Simulation/**/*.world
+Self-Balancing-Bot-Pid/Simulation/**/*.log
+Self-Balancing-Bot-Pid/Simulation/**/*.csv
+Self-Balancing-Bot-Pid/Simulation/**/*.bag
+Self-Balancing-Bot-Pid/Simulation/**/*.bag.*
