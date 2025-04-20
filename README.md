@@ -6,9 +6,7 @@ A collection of my robotics projects, ranging from motor drivers to full robotic
 - Developed in C++ on the ESP32-S3 with FreeRTOS for real-time multitasking.
 - Implements Proportional, Integral, and Derivative (PID) control for optimal balance and stability control.
 - Utilizes a Complementary Filter for sensor fusion between IMU and magnetic encoders for accurate angle estimation.
-- Incorporates both hardware and software low-pass filtering to reduce sensor noise.
 - Reads sensor data via I²C (IMU) and direct ADC (magnetic encoders) for flexible signal acquisition.
-- Designed for embedded control applications with an emphasis on modularity and signal processing.
 - Utilizing a ROS2/Gazebo Docker container to run simulations of the robot's control algorithms.
 
 ---
