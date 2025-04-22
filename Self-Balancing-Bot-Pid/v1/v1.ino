@@ -4,79 +4,157 @@
  * Author: Maximelio Finch
  * Date: 4/11/2025
  */
-const int STEPPIN = 11;  // Pin connected to STEP
-const int DIRPIN = 9;   // Pin connected to DIR
-const int ENPIN = 10;    // Pin connected to ENABLE
-const int AS5600ADCPIN = 12;
-const int ADCRESOLUTION = 4095; // 12-bit ADC so max values it can produce: 2^12 = 4096
-const int VREF = 3.3;  // ESP32 default voltage reference  
-const int ALPHA = 0.5; // Digital LPF strength (higher = smoother, but slower)
 
-int i = 3200;
+#include <Arduino.h>
+#include <Wire.h>
+#include <MPU9250_asukiaaa.h>
+
+// Motor 1
+#define M1_STEPPIN 8
+#define M1_DIRPIN 3
+#define M1_ENPIN 46
+#define M1_AS5600ADCPIN 9
+
+// Motor 2
+#define M2_STEPPIN 10
+#define M2_DIRPIN 11
+#define M2_ENPIN 12
+#define M2_AS5600ADCPIN 13
+
+#define ADCRESOLUTION 4095 // 12-bit ADC so max values it can produce: 2^12 = 4096
+#define VREF 3.3
+#define ALPHA 0.5 // Encoder filter: Digital LPF strength (higher = smoother, but slower)
+#define GYRO_ALPHA 0.7 // Gyro LPF
+#define MPU_ADDRESS 0x68
+#define PIN_SCL 15
+#define PIN_SDA 16
+
+int stepsPerCycle = 3200;
+
+// Filtered encoder angles
+float enc1Filtered = 0, enc2Filtered = 0;
+float enc1Offset = 0, enc2Offset = 0; // for zeroing
+
+// IMU
+MPU9250_asukiaaa imu;
+float filteredGyroX = 0, filteredGyroY = 0, filteredGyroZ = 0;
+float angleX = 0.0, angleY = 0.0, angleZ = 0.0;
 
 // Task handles
-TaskHandle_t sensorTaskHandle = NULL;
-TaskHandle_t motorTaskHandle = NULL;
-
-
+TaskHandle_t sensorTaskHandle = nullptr;
+TaskHandle_t motorTaskHandle = nullptr;
+TaskHandle_t imuTaskHandle = nullptr;
 
 void sensorTask(void *pvParameters) {
   for (;;) {
-    int adcValue = analogRead(AS5600ADCPIN);
-    float voltage = (adcValue / (float)ADCRESOLUTION) * VREF;
-    float angleDegrees = (voltage / VREF) * 360.0;
-    static float filteredAngle = angleDegrees;
-    filteredAngle = ALPHA * filteredAngle + (1 - ALPHA) * angleDegrees;
+    int adc1 = analogRead(M1_AS5600ADCPIN);
+    int adc2 = analogRead(M2_AS5600ADCPIN);
+    float v1 = (adc1 / (float)ADCRESOLUTION) * VREF;
+    float v2 = (adc2 / (float)ADCRESOLUTION) * VREF;
 
-    
+    float angle1 = (v1 / VREF) * 360.0;
+    float angle2 = (v2 / VREF) * 360.0;
 
-    Serial.print(0.0, 5);  // Print StdDev for raw angle
-    Serial.print(",");
-    Serial.print(360.0, 5);  // Print StdDev for raw angle
-    Serial.print(",");
-    Serial.println(filteredAngle, 5);   // Print StdDev for filtered angle
+    static float f1 = angle1, f2 = angle2;
+    f1 = ALPHA * f1 + (1 - ALPHA) * angle1;
+    f2 = ALPHA * f2 + (1 - ALPHA) * angle2;
+
+    enc1Filtered = f1 - enc1Offset;
+    enc2Filtered = f2 - enc2Offset;
+
     vTaskDelay(pdMS_TO_TICKS(2)); // 500 Hz
+  }
+}
+
+void imuTask(void *parameter) {
+  unsigned long lastTime = millis();
+  for (;;) {
+    imu.accelUpdate();
+    imu.gyroUpdate();
+    unsigned long now = millis();
+    float dt = (now - lastTime) / 1000.0;
+    lastTime = now;
+
+    float gx = imu.gyroX();
+    float gy = imu.gyroY();
+    float gz = imu.gyroZ();
+
+    filteredGyroX = GYRO_ALPHA * filteredGyroX + (1 - GYRO_ALPHA) * gx;
+    filteredGyroY = GYRO_ALPHA * filteredGyroY + (1 - GYRO_ALPHA) * gy;
+    filteredGyroZ = GYRO_ALPHA * filteredGyroZ + (1 - GYRO_ALPHA) * gz;
+
+    angleX += filteredGyroX * dt;
+    angleY += filteredGyroY * dt;
+    angleZ += filteredGyroZ * dt;
+
+    // Serial Output
+    Serial.print("IMU_Y: "); Serial.print(angleY, 2); Serial.print("\t");
+    Serial.print("ENC1: "); Serial.print(enc1Filtered, 2); Serial.print("\t");
+    Serial.print("ENC2: "); Serial.println(enc2Filtered, 2);
+
+    vTaskDelay(pdMS_TO_TICKS(20)); // ~50Hz
   }
 }
 
 void motorTask(void *pvParameters) {
   for (;;) {
-    for (int j = 0; j < i; j++) {
-      digitalWrite(STEPPIN, HIGH);
+    for (int j = 0; j < stepsPerCycle; j++) {
+      digitalWrite(M1_STEPPIN, HIGH);
+      digitalWrite(M2_STEPPIN, HIGH);
       delayMicroseconds(1000);
-      digitalWrite(STEPPIN, LOW);
+      digitalWrite(M1_STEPPIN, LOW);
+      digitalWrite(M2_STEPPIN, LOW);
       delayMicroseconds(1000);
     }
-    i = 3200;
     vTaskDelay(pdMS_TO_TICKS(2)); // 500 Hz
   }
 }
 
-void monitorTask(void *pvParameters) {
-  for (;;) {
-    UBaseType_t sensorStack = uxTaskGetStackHighWaterMark(sensorTaskHandle);
-    UBaseType_t motorStack = uxTaskGetStackHighWaterMark(motorTaskHandle);
-    Serial.print("Sensor Task Stack High Water Mark: ");
-    Serial.print(sensorStack);
-    Serial.println(" bytes");
-    Serial.print("Motor Task Stack High Water Mark: ");
-    Serial.print(motorStack);
-    Serial.println(" bytes");
-    vTaskDelay(pdMS_TO_TICKS(10000));
-  }
-}
+// void monitorTask(void *pvParameters) {
+//   for (;;) {
+//     UBaseType_t sensorStack = uxTaskGetStackHighWaterMark(sensorTaskHandle);
+//     UBaseType_t motorStack = uxTaskGetStackHighWaterMark(motorTaskHandle);
+//     Serial.print("Sensor Task Stack High Water Mark: ");
+//     Serial.print(sensorStack);
+//     Serial.println(" bytes");
+//     Serial.print("Motor Task Stack High Water Mark: ");
+//     Serial.print(motorStack);
+//     Serial.println(" bytes");
+//     vTaskDelay(pdMS_TO_TICKS(10000));
+//   }
+// }
 
 void setup() {
   Serial.begin(115200);
-  pinMode(STEPPIN, OUTPUT);
-  pinMode(DIRPIN, OUTPUT);
-  pinMode(ENPIN, OUTPUT);
-  digitalWrite(ENPIN, LOW);
-  digitalWrite(DIRPIN, HIGH);
-  analogReadResolution(12);
   delay(1000);
 
+  pinMode(M1_STEPPIN, OUTPUT); pinMode(M1_DIRPIN, OUTPUT); pinMode(M1_ENPIN, OUTPUT);
+  pinMode(M2_STEPPIN, OUTPUT); pinMode(M2_DIRPIN, OUTPUT); pinMode(M2_ENPIN, OUTPUT);
+  digitalWrite(M1_ENPIN, LOW); digitalWrite(M1_DIRPIN, HIGH);
+  digitalWrite(M2_ENPIN, LOW); digitalWrite(M2_DIRPIN, HIGH);
+
+  analogReadResolution(12);
+  Wire.begin(PIN_SDA, PIN_SCL);
+  imu.setWire(&Wire);
+  imu.beginAccel(); imu.beginGyro();
+
+  Serial.println("Hold robot upright to calibrate zero...");
+
+  // Allow sensors to settle
+  delay(2000);
+  imu.accelUpdate(); imu.gyroUpdate();
+  angleY = 0.0;  // IMU is upright at start
+
+  // Read encoder baseline
+  int adc1 = analogRead(M1_AS5600ADCPIN);
+  int adc2 = analogRead(M2_AS5600ADCPIN);
+  enc1Offset = ((adc1 / (float)ADCRESOLUTION) * 360.0);
+  enc2Offset = ((adc2 / (float)ADCRESOLUTION) * 360.0);
+
+  Serial.println("Zeroed. Starting tasks...");
+
   xTaskCreatePinnedToCore(sensorTask, "Sensor Task", 1536, NULL, 2, &sensorTaskHandle, 0);
+  xTaskCreatePinnedToCore(imuTask, "IMU Task", 4096, NULL, 1, &imuTaskHandle, 1);
   xTaskCreatePinnedToCore(motorTask, "Motor Task", 1280, NULL, 1, &motorTaskHandle, 1);
   // xTaskCreatePinnedToCore(monitorTask, "Monitor Task", 2048, NULL, 1, NULL, 0);
 }

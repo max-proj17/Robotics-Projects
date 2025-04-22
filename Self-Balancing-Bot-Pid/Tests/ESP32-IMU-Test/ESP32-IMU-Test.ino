@@ -7,7 +7,7 @@
 // Pin Def
 #define PIN_SCL    15
 #define PIN_SDA    16
-#define PIN_INT    3
+// #define PIN_INT    3
 #define GYRO_ALPHA 0.7
 float filteredGyroX = 0, filteredGyroY = 0, filteredGyroZ = 0;
 
