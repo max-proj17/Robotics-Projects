@@ -1,35 +1,46 @@
-import os
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, OpaqueFunction
+from launch.actions import TimerAction
 from launch_ros.actions import Node
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import Command
 from ament_index_python.packages import get_package_share_directory
-import xacro
-
-def launch_setup(context, *args, **kwargs):
-    # Resolve xacro to urdf at runtime
-    pkg_path = get_package_share_directory('subscriber_publisher')
-    xacro_file = os.path.join(pkg_path, 'urdf', 'balance_bot.urdf.xacro')
-    doc = xacro.process_file(xacro_file)
-    robot_desc = doc.toprettyxml(indent='  ')
-
-    return [
-        Node(
-            package='joint_state_publisher',
-            executable='joint_state_publisher',
-            name='joint_state_publisher',
-            output='screen'
-        ),
-        Node(
-            package='robot_state_publisher',
-            executable='robot_state_publisher',
-            name='robot_state_publisher',
-            parameters=[{'robot_description': robot_desc}],
-            output='screen'
-        ),
-    ]
+import os
 
 def generate_launch_description():
+    pkg_path = get_package_share_directory('subscriber_publisher')
+    xacro_file = os.path.join(pkg_path, 'urdf', 'balance_bot.urdf.xacro')
+
+    robot_state_publisher_node = Node(
+        package='robot_state_publisher',
+        executable='robot_state_publisher',
+        name='robot_state_publisher',
+        parameters=[{'robot_description': Command(['xacro ', xacro_file])}],
+        output='screen'
+    )
+
+    joint_state_publisher_node = TimerAction(
+        period=2.0,
+        actions=[
+            Node(
+                package='joint_state_publisher_gui',
+                executable='joint_state_publisher_gui',
+                name='joint_state_publisher',
+                output='screen'
+            )
+        ]
+    )
+
+    rviz_config_file = os.path.join(pkg_path, 'rviz', 'balance_bot.rviz')
+    rviz_node = Node(
+        package='rviz2',
+        executable='rviz2',
+        name='rviz2',
+        arguments=['-d', rviz_config_file],
+        output='screen'
+    )
+
     return LaunchDescription([
-        OpaqueFunction(function=launch_setup)
+        robot_state_publisher_node,
+        joint_state_publisher_node,
+        rviz_node
     ])
+
