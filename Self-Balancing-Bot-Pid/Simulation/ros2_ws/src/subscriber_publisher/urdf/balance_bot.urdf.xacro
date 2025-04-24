@@ -36,21 +36,21 @@
       <geometry>
         <box size="${chassis_width} ${chassis_depth} ${chassis_height}"/>
       </geometry>
-      <origin xyz="${chassis_width/2} ${chassis_depth/2} ${chassis_height/2}" rpy="0 0 1.5708"/> <!-- Position chassis at wheel height -->
+      <origin xyz="0 0 0" rpy="0 0 1.5708"/> <!-- Position chassis at wheel height -->
       <material name="chassis_gray"/>
     </visual>
     <collision>
       <geometry>
-        <box size="${chassis_width} ${chassis_depth} ${chassis_height}"/>
+        <box size="0 0 0"/>
       </geometry>
-      <origin xyz="${chassis_width/2} ${chassis_depth/2} ${chassis_height/2}" rpy="0 0 1.5708"/> <!-- Position chassis at wheel height -->
+      <origin xyz="0 0 0" rpy="0 0 1.5708"/> <!-- Position chassis at wheel height -->
     </collision>
     <inertial>
       <mass value="1.0"/>
       <inertia ixx="0.01" ixy="0.0" ixz="0.0"
                iyy="0.01" iyz="0.0"
                izz="0.01"/>
-      <origin xyz="${chassis_width/2} ${chassis_depth/2} ${chassis_height/2}" rpy="0 0 1.5708"/> <!-- Position chassis at wheel height -->
+      <origin xyz="0 0 0" rpy="0 0 0"/> <!-- Position chassis at wheel height -->
     </inertial>
   </link>
 
@@ -60,14 +60,14 @@
       <geometry>
         <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
       </geometry>
-      <origin xyz="0 0 ${wheel_width/2}" rpy="1.5708 0 0"/>
+      <origin xyz="0 0 0" rpy="1.5708 0 0"/>
       <material name="left_wheel_black"/>
     </visual>
     <collision>
       <geometry>
         <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
       </geometry>
-      <origin xyz="0 0 ${wheel_width/2}" rpy="1.5708 0 0"/>
+      <origin xyz="0 0 0" rpy="1.5708 0 0"/>
     </collision>
     <inertial>
       <mass value="0.2"/>
@@ -83,14 +83,14 @@
       <geometry>
         <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
       </geometry>
-      <origin xyz="0 0 ${wheel_width/2}" rpy="1.5708 0 0"/>
+      <origin xyz="0 0 0" rpy="1.5708 0 0"/>
       <material name="right_wheel_black"/>
     </visual>
     <collision>
       <geometry>
         <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
       </geometry>
-      <origin xyz="0 0 ${wheel_width/2}" rpy="1.5708 0 0"/>
+      <origin xyz="0 0 0" rpy="1.5708 0 0"/>
     </collision>
     <inertial>
       <mass value="0.2"/>
@@ -104,14 +104,14 @@
   <joint name="left_wheel_joint" type="continuous">
   <parent link="base_link"/>
   <child link="left_wheel"/>
-  <origin xyz="0 0 ${wheel_radius}" rpy="0 0 0"/> <!-- Attach wheel to side of chassis -->
+  <origin xyz="0 ${chassis_width/2 + wheel_width/2 + encoder_width/2} -${chassis_height/2}" rpy="0 0 0"/> <!-- Align wheel center with bottom of chassis -->
   <axis xyz="0 1 0"/>
 </joint>
 
 <joint name="right_wheel_joint" type="continuous">
   <parent link="base_link"/>
   <child link="right_wheel"/>
-  <origin xyz="0 0 ${wheel_radius}" rpy="0 0 0"/> <!-- Attach wheel to side of chassis -->
+  <origin xyz="0 -${chassis_width/2 + wheel_width/2 + encoder_width/2} -${chassis_height/2}" rpy="0 0 0"/> <!-- Align wheel center with bottom of chassis -->
   <axis xyz="0 1 0"/>
 </joint>
 
@@ -138,7 +138,7 @@
     <geometry>
       <cylinder radius="0.07" length="0.03"/>
     </geometry> <!--chassis_height chassis_width chassis_depth-->
-    <origin xyz="0 ${chassis_width/4} ${wheel_radius/2}" rpy="1.5708 0 0"/> <!-- Just behind the left wheel, sharing the same axis -->
+    <origin xyz="0 0 0" rpy="1.5708 0 0"/> <!-- Just behind the left wheel, sharing the same axis -->
     <material name="left_encoder_red"/>
   </visual>
 </link>
@@ -146,7 +146,7 @@
 <joint name="left_encoder_to_chassis_joint" type="fixed">
   <parent link="base_link"/> <!-- Attach to the chassis -->
   <child link="left_encoder"/> <!-- Connect to the left encoder -->
-  <origin xyz="0 ${chassis_width/4} ${wheel_radius/2}" rpy="0 0 0"/> <!-- No offset or rotation -->
+  <origin xyz="0 ${chassis_width/2 + wheel_width/2} -${chassis_height/2}" rpy="0 0 0"/> <!-- No offset or rotation -->
 </joint>
 
   <link name="right_encoder">
@@ -154,7 +154,7 @@
       <geometry>
         <cylinder radius="0.07" length="0.03"/>
       </geometry>
-      <origin xyz="0 ${-chassis_width/4} ${wheel_radius/2}" rpy="1.5708 0 0"/> <!-- Align with wheel -->
+      <origin xyz="0 0 0" rpy="1.5708 0 0"/> <!-- Align with wheel -->
       <material name="right_encoder_green"/>
     </visual>
   </link>
@@ -162,7 +162,7 @@
 <joint name="right_encoder_to_chassis_joint" type="fixed">
   <parent link="base_link"/> <!-- Attach to the chassis -->
   <child link="right_encoder"/> <!-- Connect to the right encoder -->
-  <origin xyz="0 ${-chassis_width/4} ${wheel_radius/2}" rpy="0 0 0"/> <!-- No offset or rotation -->
+  <origin xyz="0 -${chassis_width/2 + wheel_width/2} -${chassis_height/2}" rpy="0 0 0"/> <!-- No offset or rotation -->
 </joint>
 
 </robot>
