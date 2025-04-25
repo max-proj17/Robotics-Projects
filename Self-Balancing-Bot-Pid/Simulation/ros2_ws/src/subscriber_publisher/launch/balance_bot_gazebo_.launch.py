@@ -23,7 +23,11 @@ def generate_launch_description():
             package='robot_state_publisher',
             executable='robot_state_publisher',
             name='robot_state_publisher',
-            parameters=[{'robot_description': Command(['xacro ', xacro_file])}],
+            parameters=[
+                {'robot_description': Command([
+                'xacro ', xacro_file, ' config_file:=', controller_config_file
+                ])}
+            ],
             output='screen'
         ),
 
@@ -51,8 +55,9 @@ def generate_launch_description():
                     package='controller_manager',
                     executable='ros2_control_node',
                     parameters=[
-                        {'robot_description': Command(['xacro ', xacro_file])},
-                        controller_config_file
+                        {'robot_description': Command([
+                            'xacro ', xacro_file, ' config_file:=', controller_config_file
+                        ])}
                     ],
                     output='screen'
                 )
