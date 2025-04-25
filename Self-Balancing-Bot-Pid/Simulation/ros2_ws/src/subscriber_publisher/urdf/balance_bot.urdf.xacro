@@ -41,7 +41,7 @@
     </visual>
     <collision>
       <geometry>
-        <box size="0 0 0"/>
+        <box size="${chassis_width} ${chassis_depth} ${chassis_height}"/>
       </geometry>
       <origin xyz="0 0 0" rpy="0 0 1.5708"/> <!-- Position chassis at wheel height -->
     </collision>
@@ -164,5 +164,72 @@
   <child link="right_encoder"/> <!-- Connect to the right encoder -->
   <origin xyz="0 -${chassis_width/2 + wheel_width/2} -${chassis_height/2}" rpy="0 0 0"/> <!-- No offset or rotation -->
 </joint>
+
+<!-- Gazebo Plugins -->
+  <gazebo>
+    <plugin name="imu_plugin" filename="libgazebo_ros_imu.so">
+      <ros>
+        <namespace>/imu</namespace>
+        <remapping>imu/data:=/imu/data</remapping>
+      </ros>
+      <update_rate>50</update_rate>
+      <body_name>imu_link</body_name>
+    </plugin>
+  </gazebo>
+
+  <gazebo>
+    <plugin name="gazebo_ros2_control" filename="libgazebo_ros2_control.so"/>
+    <robotParam>robot_description</robotParam>
+  </gazebo>
+
+  <!-- Transmissions -->
+  <transmission name="left_wheel_transmission">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="left_wheel_joint">
+      <hardwareInterface>EffortJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="left_wheel_motor">
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+
+  <transmission name="right_wheel_transmission">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="right_wheel_joint">
+      <hardwareInterface>EffortJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="right_wheel_motor">
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+
+  <!-- ros2_control Configuration -->
+  <ros2_control name="BalanceBotHardware" type="system">
+    <hardware>
+      <plugin>gazebo_ros2_control/GazeboSystem</plugin>
+    </hardware>
+    <joint name="left_wheel_joint">
+      <command_interface name="effort"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="right_wheel_joint">
+      <command_interface name="effort"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <sensor name="imu_sensor">
+      <state_interface name="orientation.x"/>
+      <state_interface name="orientation.y"/>
+      <state_interface name="orientation.z"/>
+      <state_interface name="orientation.w"/>
+      <state_interface name="angular_velocity.x"/>
+      <state_interface name="angular_velocity.y"/>
+      <state_interface name="angular_velocity.z"/>
+      <state_interface name="linear_acceleration.x"/>
+      <state_interface name="linear_acceleration.y"/>
+      <state_interface name="linear_acceleration.z"/>
+    </sensor>
+  </ros2_control>
 
 </robot>

@@ -36,4 +36,9 @@ install(DIRECTORY urdf
   DESTINATION share/${PROJECT_NAME}
 )
 
+install(
+  DIRECTORY gazebo
+  DESTINATION share/${PROJECT_NAME}
+)
+
 ament_package()

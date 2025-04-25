@@ -29,18 +29,18 @@ def generate_launch_description():
         ]
     )
 
-    rviz_config_file = os.path.join(pkg_path, 'rviz', 'balance_bot.rviz')
-    rviz_node = Node(
-        package='rviz2',
-        executable='rviz2',
-        name='rviz2',
-        arguments=['-d', rviz_config_file],
-        output='screen'
-    )
+    # rviz_config_file = os.path.join(pkg_path, 'rviz', 'balance_bot.rviz')
+    # rviz_node = Node(
+    #     package='rviz2',
+    #     executable='rviz2',
+    #     name='rviz2',
+    #     arguments=['-d', rviz_config_file],
+    #     output='screen'
+    # )
 
     return LaunchDescription([
         robot_state_publisher_node,
         joint_state_publisher_node,
-        rviz_node
+        # rviz_node
     ])
 
