@@ -178,16 +178,17 @@
 </joint>
 
 <!-- Gazebo Plugins -->
-  <gazebo>
-    <plugin name="imu_plugin" filename="libgazebo_ros_imu.so">
+ <gazebo reference="imu_sensor">
+  <sensor name="imu_sensor" type="imu">
+    <plugin filename="libgazebo_ros_imu_sensor.so" name="imu_plugin">
       <ros>
-        <namespace>/imu</namespace>
-        <remapping>imu/data:=/imu/data</remapping>
+        <namespace>/</namespace>
+        <remapping>~/out:=imu/data</remapping>
       </ros>
-      <update_rate>50</update_rate>
-      <body_name>imu_link</body_name>
+      <initial_orientation_as_reference>false</initial_orientation_as_reference>
     </plugin>
-  </gazebo>
+  </sensor>
+</gazebo>
 
   <gazebo>
   <plugin name="gazebo_ros2_control" filename="libgazebo_ros2_control.so">
@@ -196,6 +197,8 @@
     <parameters>$(arg config_file)</parameters>
   </plugin>
 </gazebo>
+
+
 
   <!-- Transmissions -->
   <transmission name="left_wheel_transmission">

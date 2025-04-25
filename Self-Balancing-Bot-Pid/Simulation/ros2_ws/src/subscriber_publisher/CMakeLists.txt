@@ -41,4 +41,9 @@ install(
   DESTINATION share/${PROJECT_NAME}/gazebo
 )
 
+install(
+  DIRECTORY gazebo
+  DESTINATION share/${PROJECT_NAME}
+)
+
 ament_package()

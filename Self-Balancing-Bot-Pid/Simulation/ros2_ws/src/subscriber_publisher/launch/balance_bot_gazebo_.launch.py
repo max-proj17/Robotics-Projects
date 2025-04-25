@@ -54,11 +54,7 @@ def generate_launch_description():
                 Node(
                     package='controller_manager',
                     executable='ros2_control_node',
-                    parameters=[
-                        {'robot_description': Command([
-                            'xacro ', xacro_file, ' config_file:=', controller_config_file
-                        ])}
-                    ],
+                    parameters=[controller_config_file],
                     output='screen'
                 )
             ]
