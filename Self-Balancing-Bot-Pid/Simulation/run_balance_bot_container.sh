@@ -15,6 +15,7 @@ docker run -it \
     --name $CONTAINER_NAME \
     --rm \
     -e DISPLAY=$DISPLAY \
+	-e LIBGL_ALWAYS_INDIRECT=1 \
     -v /tmp/.X11-unix:/tmp/.X11-unix \
     -v $WORKSPACE_DIR:/home/dev/ros2_ws \
     $IMAGE_NAME

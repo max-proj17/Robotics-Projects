@@ -10,12 +10,31 @@ RUN apt-get update && apt-get install -y \
     curl \
     vim \
     build-essential \
+	x11-apps \
+    libx11-xcb1 \
+    libxcb1 \
+    libxext6 \
+    libxrender1 \
+    libxcb-icccm4 \
+    libxcb-image0 \
+    libxcb-keysyms1 \
+    libxcb-randr0 \
+    libxcb-render-util0 \
+    libxcb-shape0 \
+    libxcb-sync1 \
+    libxcb-xfixes0 \
+    libxcb-xinerama0 \
+    libxcb-glx0 \
+    libgl1-mesa-glx \
+    mesa-utils \
     ros-humble-gazebo-ros-pkgs \
     ros-humble-joint-state-publisher-gui \
     ros-humble-xacro \
     ros-humble-ros2-control \
     ros-humble-ros2-controllers \
+	ros-humble-effort-controllers \
     ros-humble-gazebo-ros2-control \
+	ros-humble-gazebo-plugins \
     && rm -rf /var/lib/apt/lists/*
 
 # Source ROS setup

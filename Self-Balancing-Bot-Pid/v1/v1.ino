@@ -9,17 +9,18 @@
 #include <Wire.h>
 #include <MPU9250_asukiaaa.h>
 
+// m1:    m2:    imu: good
 // Motor 1
 #define M1_STEPPIN 8
 #define M1_DIRPIN 3
 #define M1_ENPIN 46
 #define M1_AS5600ADCPIN 9
 
-// Motor 2
-#define M2_STEPPIN 10
+// Motor 2  issue! with adc
+#define M2_STEPPIN 13
 #define M2_DIRPIN 11
 #define M2_ENPIN 12
-#define M2_AS5600ADCPIN 13
+#define M2_AS5600ADCPIN 10
 
 #define ADCRESOLUTION 4095 // 12-bit ADC so max values it can produce: 2^12 = 4096
 #define VREF 3.3
@@ -87,10 +88,13 @@ void imuTask(void *parameter) {
     angleY += filteredGyroY * dt;
     angleZ += filteredGyroZ * dt;
 
-    // Serial Output
-    Serial.print("IMU_Y: "); Serial.print(angleY, 2); Serial.print("\t");
-    Serial.print("ENC1: "); Serial.print(enc1Filtered, 2); Serial.print("\t");
-    Serial.print("ENC2: "); Serial.println(enc2Filtered, 2);
+    // Serial Output for plotting
+    Serial.print(0.0, 5); Serial.print(",");         // Lower bound reference
+    Serial.print(360.0, 5); Serial.print(",");       // Upper bound reference
+
+    Serial.print(angleY, 2); Serial.print(",");      // IMU pitch angle
+    Serial.print(enc1Filtered, 2); Serial.print(",");// Encoder 1 angle
+    Serial.println(enc2Filtered, 2);                 // Encoder 2 angle
 
     vTaskDelay(pdMS_TO_TICKS(20)); // ~50Hz
   }
