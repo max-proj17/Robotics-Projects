@@ -15,7 +15,8 @@ def generate_launch_description():
         # Launch Gazebo with the specified world
         ExecuteProcess(
             cmd=['gazebo', '--verbose', '-s', 'libgazebo_ros_factory.so', gazebo_world_file],
-            output='screen'
+            output='screen',
+            shell=True
         ),
 
         # Publish the robot description
@@ -33,7 +34,7 @@ def generate_launch_description():
 
         # Spawn the robot in Gazebo
         TimerAction(
-            period=2.0,
+            period=5.0,
             actions=[
                 Node(
                     package='gazebo_ros',
@@ -49,51 +50,38 @@ def generate_launch_description():
 
         # Delay the ros2_control_node to ensure robot_description is available
         TimerAction(
-            period=4.0,
+            period=8.0,
             actions=[
                 Node(
                     package='controller_manager',
                     executable='ros2_control_node',
                     parameters=[controller_config_file],
-                    output='screen'
+                    output='screen',
+                    emulate_tty=True
                 )
             ]
         ),
 
         # Spawn the joint state broadcaster
         TimerAction(
-            period=6.0,
-            actions=[
-                Node(
-                    package='controller_manager',
-                    executable='spawner',
-                    arguments=['joint_state_broadcaster', '--controller-manager', '/controller_manager'],
-                    output='screen'
-                )
-            ]
-        ),
-
-        # Spawn the left wheel controller
-        TimerAction(
-            period=8.0,
-            actions=[
-                Node(
-                    package='controller_manager',
-                    executable='spawner',
-                    arguments=['left_wheel_controller', '--controller-manager', '/controller_manager'],
-                    output='screen'
-                )
-            ]
-        ),
-
-        # Spawn the right wheel controller
-        TimerAction(
             period=10.0,
             actions=[
                 Node(
                     package='controller_manager',
                     executable='spawner',
-                    arguments=['right_wheel_controller', '--controller-manager', '/controller_manager'],
+                    arguments=['joint_state_broadcaster'],
+                    output='screen'
+                ),
+                Node(
+                    package='controller_manager',
+                    executable='spawner',
+                    arguments=['left_wheel_controller'],
+                    output='screen'
+                ),
+                Node(
+                    package='controller_manager',
+                    executable='spawner',
+                    arguments=['right_wheel_controller'],
                     output='screen'
                 )
             ]

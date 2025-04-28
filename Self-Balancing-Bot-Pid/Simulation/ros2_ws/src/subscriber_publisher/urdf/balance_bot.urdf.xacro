@@ -193,8 +193,9 @@
   <gazebo>
   <plugin name="gazebo_ros2_control" filename="libgazebo_ros2_control.so">
     <robot_param>robot_description</robot_param>
-    <robot_param_node>robot_state_publisher</robot_param_node>
     <parameters>$(arg config_file)</parameters>
+    <robot_param_node>robot_state_publisher</robot_param_node>
+     <control_period>0.001</control_period> 
   </plugin>
 </gazebo>
 
@@ -204,7 +205,7 @@
   <transmission name="left_wheel_transmission">
     <type>transmission_interface/SimpleTransmission</type>
     <joint name="left_wheel_joint">
-      <hardwareInterface>EffortJointInterface</hardwareInterface>
+      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
     </joint>
     <actuator name="left_wheel_motor">
       <mechanicalReduction>1</mechanicalReduction>
@@ -214,7 +215,7 @@
   <transmission name="right_wheel_transmission">
     <type>transmission_interface/SimpleTransmission</type>
     <joint name="right_wheel_joint">
-      <hardwareInterface>EffortJointInterface</hardwareInterface>
+      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
     </joint>
     <actuator name="right_wheel_motor">
       <mechanicalReduction>1</mechanicalReduction>
