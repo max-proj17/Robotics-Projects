@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(subscriber_publisher)
+project(balance_bot)
 
 # Use C++17 by default
 if(NOT CMAKE_CXX_STANDARD)

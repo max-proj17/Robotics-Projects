@@ -6,7 +6,7 @@ import os
 from launch.substitutions import Command
 
 def generate_launch_description():
-    pkg_path = get_package_share_directory('subscriber_publisher')
+    pkg_path = get_package_share_directory('balance_bot')
     xacro_file = os.path.join(pkg_path, 'urdf', 'balance_bot.urdf.xacro')
     gazebo_world_file = os.path.join(pkg_path, 'gazebo', 'plane.world')
     controller_config_file = os.path.join(pkg_path, 'gazebo', 'config', 'controller_config.yaml')
