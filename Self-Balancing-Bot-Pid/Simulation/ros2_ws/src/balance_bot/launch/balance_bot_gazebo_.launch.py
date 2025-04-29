@@ -85,5 +85,19 @@ def generate_launch_description():
                     output='screen'
                 )
             ]
+        ),
+        
+        # Launch balance controller node
+        TimerAction(
+            period=12.0,
+            actions=[
+                Node(
+                package='balance_bot',
+                executable='balance_bot',
+                name='balance_controller',
+                parameters=[{'use_sim_time': True}],
+                output='screen'
+                )
+            ]
         )
     ])

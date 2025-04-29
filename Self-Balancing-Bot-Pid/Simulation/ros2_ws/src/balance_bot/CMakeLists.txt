@@ -10,19 +10,23 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
 
-# Executable: Simple Publisher Node
-add_executable(publisher_node src/simple_publisher.cpp)
-ament_target_dependencies(publisher_node rclcpp std_msgs)
+# # Executable: Simple Publisher Node
+# add_executable(publisher_node src/simple_publisher.cpp)
+# ament_target_dependencies(publisher_node rclcpp std_msgs)
+
+# # Executable: Simple Subscriber Node
+# add_executable(subscriber_node src/simple_subscriber.cpp)
+# ament_target_dependencies(subscriber_node rclcpp std_msgs)
 
 # Executable: Simple Subscriber Node
-add_executable(subscriber_node src/simple_subscriber.cpp)
-ament_target_dependencies(subscriber_node rclcpp std_msgs)
+add_executable(balance_bot src/balance_controller.cpp)
+ament_target_dependencies(balance_bot rclcpp std_msgs sensor_msgs)
 
 # Install targets
 install(TARGETS
-  publisher_node 
-  subscriber_node
+  balance_bot
   DESTINATION lib/${PROJECT_NAME}
 )
 

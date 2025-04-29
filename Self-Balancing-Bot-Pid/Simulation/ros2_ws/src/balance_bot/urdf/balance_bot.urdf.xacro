@@ -104,18 +104,20 @@
 
   <!-- Wheel Joints -->
   <joint name="left_wheel_joint" type="continuous">
-  <parent link="base_link"/>
-  <child link="left_wheel"/>
-  <origin xyz="0 ${chassis_width/2 + wheel_width/2 + encoder_width/2} -${chassis_height/2}" rpy="0 0 0"/> <!-- Align wheel center with bottom of chassis -->
-  <axis xyz="0 1 0"/>
-</joint>
+    <parent link="base_link"/>
+    <child link="left_wheel"/>
+    <origin xyz="0 ${chassis_width/2 + wheel_width/2 + encoder_width/2} -${chassis_height/2}" rpy="0 0 0"/> <!-- Align wheel center with bottom of chassis -->
+    <axis xyz="0 1 0"/>
+    <dynamics damping="0.1" friction="0.05"/>
+  </joint>
 
-<joint name="right_wheel_joint" type="continuous">
-  <parent link="base_link"/>
-  <child link="right_wheel"/>
-  <origin xyz="0 -${chassis_width/2 + wheel_width/2 + encoder_width/2} -${chassis_height/2}" rpy="0 0 0"/> <!-- Align wheel center with bottom of chassis -->
-  <axis xyz="0 1 0"/>
-</joint>
+  <joint name="right_wheel_joint" type="continuous">
+    <parent link="base_link"/>
+    <child link="right_wheel"/>
+    <origin xyz="0 -${chassis_width/2 + wheel_width/2 + encoder_width/2} -${chassis_height/2}" rpy="0 0 0"/> <!-- Align wheel center with bottom of chassis -->
+    <axis xyz="0 1 0"/>
+    <dynamics damping="0.1" friction="0.05"/>
+  </joint>
 
   <!-- IMU -->
   <link name="imu_link">
@@ -178,7 +180,7 @@
 </joint>
 
 <!-- Gazebo Plugins -->
- <gazebo reference="imu_sensor">
+ <gazebo reference="imu_link">
   <sensor name="imu_sensor" type="imu">
     <plugin filename="libgazebo_ros_imu_sensor.so" name="imu_plugin">
       <ros>
