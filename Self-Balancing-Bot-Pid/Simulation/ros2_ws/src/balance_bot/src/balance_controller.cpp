@@ -97,6 +97,7 @@ private:
 
     auto now = this->now();
     double dt = (now - last_time_).seconds();
+   // RCLCPP_INFO(get_logger(), "dt = %.6f", dt);
     last_time_ = now;
 
     double filtered_angle = kalman_update(rate, angle, dt);
@@ -114,10 +115,13 @@ private:
     // send same command to both wheels for balancing
     left_cmd_pub_->publish(cmd);
     right_cmd_pub_->publish(cmd);
+
+    //RCLCPP_INFO(get_logger(), "Got IMU: angle=%.3f control=%.3f", filtered_angle, control);
+
   }
 
   void joint_callback(const sensor_msgs::msg::JointState::SharedPtr msg) {
-    // could integrate wheel position if needed
+    // wheel position will be used later
   }
 };
 

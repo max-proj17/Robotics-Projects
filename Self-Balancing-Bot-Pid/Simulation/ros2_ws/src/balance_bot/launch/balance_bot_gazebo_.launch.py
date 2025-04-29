@@ -14,7 +14,11 @@ def generate_launch_description():
     return LaunchDescription([
         # Launch Gazebo with the specified world
         ExecuteProcess(
-            cmd=['gazebo', '--verbose', '-s', 'libgazebo_ros_factory.so', gazebo_world_file],
+            cmd=[
+                'gazebo', '--verbose', 
+                 '-s', 'libgazebo_ros_factory.so', 
+                 '-s', 'libgazebo_ros_init.so',
+                 gazebo_world_file],
             output='screen',
             shell=True
         ),
