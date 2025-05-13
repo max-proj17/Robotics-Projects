@@ -12,6 +12,12 @@ def generate_launch_description():
     controller_config_file = os.path.join(pkg_path, 'gazebo', 'config', 'controller_config.yaml')
 
     return LaunchDescription([
+        # Start Gazebo paused
+        ExecuteProcess(
+            cmd=['ros2', 'service', 'call', '/gazebo/pause_physics', 'std_srvs/srv/Empty'],
+            output='screen'
+        ),
+        
         # Launch Gazebo with the specified world
         ExecuteProcess(
             cmd=[
@@ -101,6 +107,17 @@ def generate_launch_description():
                 name='balance_controller',
                 parameters=[{'use_sim_time': True}],
                 output='screen'
+                )
+            ]
+        ),
+        
+        # Unpause physics once everything is ready
+        TimerAction(
+            period=13.0,
+            actions=[
+                ExecuteProcess(
+                    cmd=['ros2', 'service', 'call', '/gazebo/unpause_physics', 'std_srvs/srv/Empty'],
+                    output='screen'
                 )
             ]
         )
