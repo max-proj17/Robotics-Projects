@@ -132,7 +132,7 @@ private:
   }
 
   void joint_callback(const sensor_msgs::msg::JointState::SharedPtr msg) {
-    // wheel position will be used later
+    // wheel position will be used later for keyboard control of the bot
   }
 };
 
