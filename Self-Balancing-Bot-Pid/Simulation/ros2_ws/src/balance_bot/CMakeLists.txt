@@ -11,10 +11,12 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(tf2_ros REQUIRED)
 
 # Executable: Simple Subscriber Node
 add_executable(balance_bot src/balance_controller.cpp)
-ament_target_dependencies(balance_bot rclcpp std_msgs sensor_msgs)
+ament_target_dependencies(balance_bot rclcpp std_msgs sensor_msgs tf2 tf2_ros)
 
 # Install targets
 install(TARGETS

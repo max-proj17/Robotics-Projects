@@ -113,7 +113,7 @@ def generate_launch_description():
         
         # Unpause physics once everything is ready
         TimerAction(
-            period=13.0,
+            period=20.0,
             actions=[
                 ExecuteProcess(
                     cmd=['ros2', 'service', 'call', '/gazebo/unpause_physics', 'std_srvs/srv/Empty'],

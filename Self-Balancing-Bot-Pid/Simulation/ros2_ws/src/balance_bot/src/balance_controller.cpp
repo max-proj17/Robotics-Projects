@@ -5,6 +5,8 @@
 #include <sensor_msgs/msg/imu.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
 #include <std_msgs/msg/float64.hpp>
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2/LinearMath/Matrix3x3.h>
 
 using std::placeholders::_1;
 
@@ -29,7 +31,7 @@ public:
     R_measure_ = 0.03;
 
     // Subscribers
-    imu_sub_ = create_subscription<sensor_msgs::msg::Imu>("/imu/data", 10, std::bind(&BalanceController::imu_callback, this, _1));
+    imu_sub_ = create_subscription<sensor_msgs::msg::Imu>("/imu_plugin/out", 10, std::bind(&BalanceController::imu_callback, this, _1));
     joint_sub_ = create_subscription<sensor_msgs::msg::JointState>("/joint_states", 10, std::bind(&BalanceController::joint_callback, this, _1));
 
     // Publishers (effort commands)
@@ -90,17 +92,26 @@ private:
   }
 
   void imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg) {
-    // extract pitch angle and rate (assuming orientation quaternion -> Euler conversion done externally)
-    double rate = msg->angular_velocity.y;
-    // approximate angle from accel: pitch = atan2(ax, az)
-    double angle = atan2(msg->linear_acceleration.x, msg->linear_acceleration.z);
+    // Use quaternion for angle
+    tf2::Quaternion q(
+      msg->orientation.x,
+      msg->orientation.y,
+      msg->orientation.z,
+      msg->orientation.w);
+    tf2::Matrix3x3 m(q);
+    double roll, pitch, yaw;
+    m.getRPY(roll, pitch, yaw);
+    double newAngle = pitch;
+    double newRate = msg->angular_velocity.y;
+
+    RCLCPP_INFO(get_logger(), "Got IMU: angle=%.3f rate=%.3f", newAngle, newRate);
 
     auto now = this->now();
     double dt = (now - last_time_).seconds();
-   // RCLCPP_INFO(get_logger(), "dt = %.6f", dt);
+    if (dt <= 0.0) return;
     last_time_ = now;
 
-    double filtered_angle = kalman_update(rate, angle, dt);
+    double filtered_angle = kalman_update(newRate, newAngle, dt);
 
     // PID on angle
     double error = 0.0 - filtered_angle;
