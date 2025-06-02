@@ -1,34 +1,26 @@
-# Use the official ROS 2 Humble desktop image
-FROM osrf/ros:humble-desktop
+FROM osrf/ros:humble-desktopMore actions
 
 # Set non-interactive frontend for apt
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install required tools and set up the new ROS GPG key
-RUN apt-get update && \
-    apt-get install -y curl gnupg2 lsb-release && \
-    mkdir -p /etc/apt/keyrings && \
-    curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key | \
-    gpg --dearmor | tee /etc/apt/keyrings/ros-archive-keyring.gpg > /dev/null && \
-    echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(lsb_release -cs) main" > /etc/apt/sources.list.d/ros2.list && \
-    apt-get update && \
-    apt-get install -y \
-        git curl vim build-essential \
-        x11-apps mesa-utils glmark2 vulkan-utils \
-        libgl1-mesa-glx libgl1-mesa-dri \
-        libx11-xcb1 libxcb1 libxext6 libxrender1 \
-        libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
-        libxcb-randr0 libxcb-render-util0 libxcb-shape0 \
-        libxcb-sync1 libxcb-xfixes0 libxcb-xinerama0 libxcb-glx0 \
-        nvidia-cuda-toolkit \
-        ros-humble-gazebo-ros-pkgs \
-        ros-humble-joint-state-publisher-gui \
-        ros-humble-xacro \
-        ros-humble-ros2-control ros-humble-ros2-controllers \
-        ros-humble-effort-controllers ros-humble-gazebo-ros2-control \
-        ros-humble-gazebo-plugins && \
-    rm -rf /var/lib/apt/lists/*
-
+# Install tools, Gazebo packages, and GPU/graphics dependencies
+RUN apt-get update && apt-get install -y \
+    git curl vim build-essential \
+    x11-apps mesa-utils glmark2 vulkan-utils \
+    libgl1-mesa-glx libgl1-mesa-dri \
+    libnvidia-gl-551 libnvidia-compute-551 nvidia-cuda-toolkit-12-4 \
+    libx11-xcb1 libxcb1 libxext6 libxrender1 libxcb-icccm4 libxcb-image0 \
+    libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-shape0 \
+    libxcb-sync1 libxcb-xfixes0 libxcb-xinerama0 libxcb-glx0 \
+    ros-humble-gazebo-ros-pkgs \
+    ros-humble-joint-state-publisher-gui \
+    ros-humble-xacro \
+    ros-humble-ros2-control \
+    ros-humble-ros2-controllers \
+    ros-humble-effort-controllers \
+    ros-humble-gazebo-ros2-control \
+    ros-humble-gazebo-plugins \
+    && rm -rf /var/lib/apt/lists/*
 
 # Set up ROS environment in shell
 SHELL ["/bin/bash", "-c"]
