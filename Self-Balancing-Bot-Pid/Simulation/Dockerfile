@@ -7,9 +7,10 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Install required tools and set up the new ROS GPG key
 RUN apt-get update && \
     apt-get install -y curl gnupg2 lsb-release && \
-	apt-key del F42ED6FBAB17C654 || true && \
-    curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg && \
-    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/ros2.list > /dev/null && \
+    mkdir -p /etc/apt/keyrings && \
+    curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key | \
+    gpg --dearmor | tee /etc/apt/keyrings/ros-archive-keyring.gpg > /dev/null && \
+    echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(lsb_release -cs) main" > /etc/apt/sources.list.d/ros2.list && \
     apt-get update && \
     apt-get install -y \
         git curl vim build-essential \
@@ -27,6 +28,7 @@ RUN apt-get update && \
         ros-humble-effort-controllers ros-humble-gazebo-ros2-control \
         ros-humble-gazebo-plugins && \
     rm -rf /var/lib/apt/lists/*
+
 
 # Set up ROS environment in shell
 SHELL ["/bin/bash", "-c"]
