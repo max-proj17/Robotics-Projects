@@ -4,13 +4,13 @@ FROM osrf/ros:humble-desktop
 # Set non-interactive frontend for apt
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install tools, Gazebo packages, and GPU/graphics dependencies
+# Install required tools and set up the new ROS GPG key
 RUN apt-get update && \
     apt-get install -y curl gnupg2 lsb-release && \
-    # Refresh expired ROS key
-    apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys F42ED6FBAB17C654 && \
+    curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg && \
+    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(lsb_release -cs) main" > /etc/apt/sources.list.d/ros2.list && \
     apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    apt-get install -y \
         git curl vim build-essential \
         x11-apps mesa-utils glmark2 vulkan-utils \
         libgl1-mesa-glx libgl1-mesa-dri \
