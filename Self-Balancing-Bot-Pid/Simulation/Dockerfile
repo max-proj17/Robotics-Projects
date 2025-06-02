@@ -1,4 +1,4 @@
-FROM osrf/ros:humble-desktopMore actions
+FROM osrf/ros:humble-desktop
 
 # Set non-interactive frontend for apt
 ENV DEBIAN_FRONTEND=noninteractive
