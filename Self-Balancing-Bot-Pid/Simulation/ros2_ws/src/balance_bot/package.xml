@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="3">
-  <name>subscriber_publisher</name>
+  <name>balance_bot</name>
   <version>0.0.0</version>
-  <description>Publisher and Subscriber Test</description>
+  <description>Balance Bot Simulation</description>
   <maintainer email="maximeliofinch@gmail.com">root</maintainer>
   <license>MIT</license>
 
@@ -15,9 +15,9 @@
   <depend>robot_state_publisher</depend>
   <depend>joint_state_publisher_gui</depend>
   <depend>urdf</depend>
+  <depend>sensor_msgs</depend>
   <depend>xacro</depend>
   <depend>rviz2</depend>
-  <depend>sensor_msgs</depend>
   <depend>geometry_msgs</depend>
   <depend>tf2</depend>
   <depend>tf2_ros</depend>

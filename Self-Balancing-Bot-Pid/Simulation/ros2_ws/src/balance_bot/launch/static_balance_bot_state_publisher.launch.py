@@ -6,7 +6,7 @@ from ament_index_python.packages import get_package_share_directory
 import os
 
 def generate_launch_description():
-    pkg_path = get_package_share_directory('subscriber_publisher')
+    pkg_path = get_package_share_directory('balance_bot')
     xacro_file = os.path.join(pkg_path, 'urdf', 'balance_bot.urdf.xacro')
 
     robot_state_publisher_node = Node(

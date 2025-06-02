@@ -5,13 +5,19 @@ controller_manager:
       type: joint_state_broadcaster/JointStateBroadcaster
     left_wheel_controller:
       type: effort_controllers/JointGroupEffortController
-      joints: 
-        - left_wheel_joint
-      command_interfaces: 
-        - effort
     right_wheel_controller:
       type: effort_controllers/JointGroupEffortController
-      joints: 
-        - right_wheel_joint
-      command_interfaces: 
-        - effort
+
+left_wheel_controller:
+  ros__parameters:
+    joints:
+      - left_wheel_joint
+    command_interfaces:
+      - effort
+
+right_wheel_controller:
+  ros__parameters:
+    joints:
+      - right_wheel_joint
+    command_interfaces:
+      - effort
