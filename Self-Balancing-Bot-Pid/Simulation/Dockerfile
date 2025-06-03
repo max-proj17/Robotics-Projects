@@ -3,6 +3,9 @@ FROM osrf/ros:humble-desktop
 # Set non-interactive frontend for apt
 ENV DEBIAN_FRONTEND=noninteractive
 
+# Remove the old ROS 2 apt list if it exists
+RUN rm -f /etc/apt/sources.list.d/ros2-latest.list
+
 # Install necessary tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl gnupg2 lsb-release && \
