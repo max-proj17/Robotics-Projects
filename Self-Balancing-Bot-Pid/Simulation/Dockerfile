@@ -3,13 +3,14 @@ FROM osrf/ros:humble-desktop
 # Set non-interactive frontend for apt
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Remove existing ROS 2 repository and key to prevent conflicts
-#RUN rm -f /etc/apt/sources.list.d/ros2.list \
-#    /usr/share/keyrings/ros2-latest-archive-keyring.gpg
+# Install necessary tools
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl gnupg2 lsb-release && \
+    rm -rf /var/lib/apt/lists/*
 
 # Add the updated ROS 2 GPG key and repository
-# RUN curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg && \
-#    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(lsb_release -cs) main" > /etc/apt/sources.list.d/ros2.list
+RUN curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg && \
+    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(lsb_release -cs) main" > /etc/apt/sources.list.d/ros2.list
 
 # Update package lists and install necessary packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
