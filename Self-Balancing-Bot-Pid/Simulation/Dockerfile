@@ -12,11 +12,10 @@ RUN curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o 
     echo "deb [arch=amd64 signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(lsb_release -cs) main" > /etc/apt/sources.list.d/ros2.list
 
 # Update package lists and install necessary packages
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     git curl vim build-essential \
     x11-apps mesa-utils glmark2 vulkan-utils \
     libgl1-mesa-glx libgl1-mesa-dri \
-    libnvidia-gl-551 libnvidia-compute-551 nvidia-cuda-toolkit-12-4 \
     libx11-xcb1 libxcb1 libxext6 libxrender1 libxcb-icccm4 libxcb-image0 \
     libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-shape0 \
     libxcb-sync1 libxcb-xfixes0 libxcb-xinerama0 libxcb-glx0 \
