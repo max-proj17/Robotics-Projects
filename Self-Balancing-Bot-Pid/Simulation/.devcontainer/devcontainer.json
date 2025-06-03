@@ -9,6 +9,8 @@
     "-v", "/tmp/.X11-unix:/tmp/.X11-unix",
     "-v", "${localWorkspaceFolder}/ros2_ws:/home/dev/ros2_ws"
   ],
+  "overrideCommand": false,
+  "postCreateCommand": "/home/dev/ros2_ws/run_balance_bot_container.sh",
   "customizations": {
     "vscode": {
       "extensions": [
