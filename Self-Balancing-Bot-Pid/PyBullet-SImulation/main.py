@@ -67,9 +67,10 @@ urdf_path = os.path.join(os.path.dirname(__file__), "balance_bot.urdf")
 
 # Place robot so wheels sit exactly on the plane (wheel_radius = 0.15)
 wheel_radius = 0.15
-start_pos = [0, 0, wheel_radius]
+chassis_height = 0.6
+start_pos = [0, 0, (chassis_height / 2 + wheel_radius)]
 # Tilt robot by 10° backward around the y-axis so controller must act right away
-start_orientation = p.getQuaternionFromEuler([0, math.radians(10), 0])
+start_orientation = p.getQuaternionFromEuler([0, 0, 0])
 
 robotId = p.loadURDF(
     urdf_path,
