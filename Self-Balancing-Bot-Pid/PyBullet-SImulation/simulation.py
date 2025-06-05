@@ -5,7 +5,6 @@ import math
 import time
 import numpy as np
 
-
 def setup_pybullet():
     p.connect(p.GUI)
     p.setAdditionalSearchPath(pybullet_data.getDataPath())
@@ -26,6 +25,7 @@ def setup_pybullet():
         info = p.getJointInfo(robot_id, j)
         joint_map[info[1].decode('utf-8')] = j
         link_map[info[12].decode('utf-8')] = j
+        # Disable default motor forces
         p.setJointMotorControl2(robot_id, j, controlMode=p.VELOCITY_CONTROL, targetVelocity=0, force=0.05)
 
     def find_link_index(substrings):
