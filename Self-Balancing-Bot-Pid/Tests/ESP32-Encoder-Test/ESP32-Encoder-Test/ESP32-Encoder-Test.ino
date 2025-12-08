@@ -23,7 +23,9 @@ void loop() {
 
 // Digital LPF to further remove ADC read noise
   filteredAngle = ALPHA * filteredAngle + (1 - ALPHA) * angleDegrees;
-  Serial.println(filteredAngle, 1);
+  Serial.print(0.0);     Serial.print(",");   // Lower bound
+  Serial.print(360.0);   Serial.print(",");   // Upper bound
+  Serial.println(filteredAngle);
 
   // Serial.print("ADC Value: ");
   // Serial.print(adcValue);
@@ -33,5 +35,5 @@ void loop() {
   //Serial.println(angleDegrees, 1);
   // Serial.println("°");
 
-  delay(200);
+  delay(20);
 }

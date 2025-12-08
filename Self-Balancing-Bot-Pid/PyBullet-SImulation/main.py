@@ -22,7 +22,7 @@ p.addUserDebugParameter("D_gain", 0.0, 5.0, 0.075)
 
 # Simulation config
 dt = 1.0 / 240.0
-noise_sigma = 0.02
+noise_sigma = 0.09
 max_force = 10.0
 
 # Now supplying both R_angle and R_rate to Kalman1D
@@ -106,20 +106,20 @@ def plot_thread():
     line1_noisy, = ax1.plot([], [], 'r-', label='Noisy pitch')
     line1_filt,  = ax1.plot([], [], 'g-', label='Filtered pitch')
     ax1.set_ylabel("Pitch (rad)")
-    ax1.set_ylim(-10, 10)  # Extended range for pitch
+    ax1.set_ylim(-3, 3)  # Extended range for pitch
     ax1.legend()
 
     # Noisy vs. Filtered Rate
     line2_noisy, = ax2.plot([], [], 'b-', label='Gyro rate')
     line2_filt,  = ax2.plot([], [], 'c-', label='Filtered rate')
     ax2.set_ylabel("Angular rate (rad/s)")
-    ax2.set_ylim(-50, 50)  # Longer y-axis for rate
+    ax2.set_ylim(-10, 10)  # Longer y-axis for rate
     ax2.legend()
 
     # PID output (velocity command)
     line3, = ax3.plot([], [], 'm-', label='PID output')
     ax3.set_ylabel("Control (velocity)")
-    ax3.set_ylim(-20, 20)  # Range from -20 to 20
+    ax3.set_ylim(-10, 10)  # Range from -20 to 20
     ax3.legend()
 
     # ESS (error sum over last second)
