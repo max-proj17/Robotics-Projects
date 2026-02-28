@@ -1,10 +1,11 @@
 // src/balance_controller.cpp
 #include <memory>
 #include <vector>
+#include <random>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/imu.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
-#include <std_msgs/msg/float64.hpp>
+#include <std_msgs/msg/float64_multi_array.hpp>
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2/LinearMath/Matrix3x3.h>
 
@@ -14,10 +15,21 @@ class BalanceController : public rclcpp::Node {
 public:
   BalanceController()
   : Node("balance_controller") {
-    // PID gains 
-    p_gain_ = 50.0;
-    i_gain_ = 1.0;
-    d_gain_ = 5.0;
+    // PID gains. Start conservative to avoid torque spikes on first activation.
+    // The robot is ~1kg chassis + 0.4kg wheels, wheel radius 0.15m.
+    // Tune upward gradually once stable: increase P first, then D, keep I small.
+    p_gain_ = 20.0;
+    i_gain_ = 0.1;
+    d_gain_ = 2.0;
+
+    // Declare disturbance parameters (tunable live via ros2 param set)
+    declare_parameter("angle_noise_stddev",  0.005);
+    declare_parameter("rate_noise_stddev",   0.01);
+    declare_parameter("torque_noise_stddev", 0.1);
+    declare_parameter("impulse_magnitude",   2.0);
+    declare_parameter("impulse_period_s",    5.0);
+
+    rng_ = std::mt19937(std::random_device{}());
 
     // Kalman filter initialization
     // state: [angle; bias]
@@ -35,10 +47,11 @@ public:
     joint_sub_ = create_subscription<sensor_msgs::msg::JointState>("/joint_states", 10, std::bind(&BalanceController::joint_callback, this, _1));
 
     // Publishers (effort commands)
-    left_cmd_pub_ = create_publisher<std_msgs::msg::Float64>("/left_wheel_controller/command", 10);
-    right_cmd_pub_ = create_publisher<std_msgs::msg::Float64>("/right_wheel_controller/command", 10);
+    left_cmd_pub_ = create_publisher<std_msgs::msg::Float64MultiArray>("/left_wheel_controller/commands", 10);
+    right_cmd_pub_ = create_publisher<std_msgs::msg::Float64MultiArray>("/right_wheel_controller/commands", 10);
 
     last_time_ = this->now();
+    last_impulse_time_ = this->now();
     integral_ = 0.0;
     prev_error_ = 0.0;
   }
@@ -47,7 +60,7 @@ private:
   // Subscribers and publishers
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;
   rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_sub_;
-  rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr left_cmd_pub_, right_cmd_pub_;
+  rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr left_cmd_pub_, right_cmd_pub_;
 
   // PID state
   double p_gain_, i_gain_, d_gain_;
@@ -59,6 +72,8 @@ private:
   double Q_angle_, Q_bias_, R_measure_;
 
   rclcpp::Time last_time_;
+  std::mt19937 rng_;
+  rclcpp::Time last_impulse_time_;
 
   // Kalman filter update
   double kalman_update(double newRate, double newAngle, double dt) {
@@ -104,24 +119,53 @@ private:
     double newAngle = pitch;
     double newRate = msg->angular_velocity.y;
 
-    RCLCPP_INFO(get_logger(), "Got IMU: angle=%.3f rate=%.3f", newAngle, newRate);
+    // Inject sensor noise
+    double angle_std = get_parameter("angle_noise_stddev").as_double();
+    double rate_std  = get_parameter("rate_noise_stddev").as_double();
+    if (angle_std > 0.0) newAngle += std::normal_distribution<double>(0.0, angle_std)(rng_);
+    if (rate_std  > 0.0) newRate  += std::normal_distribution<double>(0.0, rate_std)(rng_);
+
+    // RCLCPP_INFO(get_logger(), "Got IMU: angle=%.3f rate=%.3f", newAngle, newRate);
 
     auto now = this->now();
     double dt = (now - last_time_).seconds();
-    if (dt <= 0.0) return;
-    last_time_ = now;
+
+    // Guard against huge dt on first real tick
+    if (dt <= 0.0 || dt > 1.0) {
+      last_time_ = now;
+      return;
+    }
 
     double filtered_angle = kalman_update(newRate, newAngle, dt);
 
     // PID on angle
     double error = 0.0 - filtered_angle;
     integral_ += error * dt;
+    // Clamp integral to prevent windup. Without this, 7+ seconds of tilt before
+    // the controller activates would build up a huge integral that launches the robot
+    // into the air.
+    integral_ = std::clamp(integral_, -5.0, 5.0);
     double derivative = (error - prev_error_) / dt;
     double control = p_gain_ * error + i_gain_ * integral_ + d_gain_ * derivative;
     prev_error_ = error;
 
-    std_msgs::msg::Float64 cmd;
-    cmd.data = control;
+    std_msgs::msg::Float64MultiArray cmd;
+
+    // Torque output noise
+    double torque_std = get_parameter("torque_noise_stddev").as_double();
+    if (torque_std > 0.0) control += std::normal_distribution<double>(0.0, torque_std)(rng_);
+
+    // Periodic impulse disturbance
+    double impulse_mag    = get_parameter("impulse_magnitude").as_double();
+    double impulse_period = get_parameter("impulse_period_s").as_double();
+    double impulse = 0.0;
+    if (impulse_mag > 0.0 && (now - last_impulse_time_).seconds() >= impulse_period) {
+      impulse = impulse_mag;
+      last_impulse_time_ = now;
+      RCLCPP_INFO(get_logger(), "Applying disturbance impulse: %.2f Nm", impulse_mag);
+    }
+
+    cmd.data = {control + impulse};
 
     // send same command to both wheels for balancing
     left_cmd_pub_->publish(cmd);

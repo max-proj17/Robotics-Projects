@@ -1,12 +1,10 @@
 #!/bin/bash
-
 source /opt/ros/humble/setup.bash
-
-# Stop on error
 set -e
-
-# Go to workspace root (in case script is run from elsewhere)
 cd "$(dirname "$0")"
+
+echo "Cleaning previous install..."
+rm -rf build/balance_bot install/balance_bot
 
 echo "Building package..."
 colcon build --packages-select balance_bot
