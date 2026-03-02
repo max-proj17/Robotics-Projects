@@ -1,182 +1,222 @@
 // src/balance_controller.cpp
+#include "kalman_filter.hpp"
+
+#include <cmath>
 #include <memory>
-#include <vector>
 #include <random>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/imu.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
 #include <std_msgs/msg/float64_multi_array.hpp>
-#include <tf2/LinearMath/Quaternion.h>
 #include <tf2/LinearMath/Matrix3x3.h>
+#include <tf2/LinearMath/Quaternion.h>
 
 using std::placeholders::_1;
 
+static constexpr double MAX_VEL          = 50.0;  // rad/s — wheel velocity command limit
+static constexpr double FALLEN_THRESHOLD = 0.70;  // rad (~40 degrees) — stop and wait for reset
+
 class BalanceController : public rclcpp::Node {
 public:
-  BalanceController()
-  : Node("balance_controller") {
-    // PID gains. Start conservative to avoid torque spikes on first activation.
-    // The robot is ~1kg chassis + 0.4kg wheels, wheel radius 0.15m.
-    // Tune upward gradually once stable: increase P first, then D, keep I small.
-    p_gain_ = 20.0;
-    i_gain_ = 0.1;
-    d_gain_ = 2.0;
+  BalanceController() : Node("balance_controller") {
 
-    // Declare disturbance parameters (tunable live via ros2 param set)
-    declare_parameter("angle_noise_stddev",  0.005);
-    declare_parameter("rate_noise_stddev",   0.01);
-    declare_parameter("torque_noise_stddev", 0.1);
-    declare_parameter("impulse_magnitude",   2.0);
-    declare_parameter("impulse_period_s",    5.0);
+    // ── PID gains ─────────────────────────────────────────────────────────
+    //  Units (velocity-mode):
+    //    P : (rad/s) per rad      of angle error
+    //    I : (rad/s) per (rad·s)  of accumulated error   <- primary restoring force
+    //    D : dimensionless        (rad/s) per (rad/s) of rate
+    //
+    //  I must exceed ~g/r ≈ 9.81/0.034 = (approx) 288 to overcome gravity.
+    p_gain_ = 150.0;
+    i_gain_ = 500.0;
+    d_gain_ =  15.0;
+
+    // ── Runtime-tunable parameters ────────────────────────────────────────
+    declare_parameter("balance_point",      0.0);   // rad — trim offset for CoM
+    declare_parameter("angle_noise_stddev", 0.0);   // rad — inject sensor noise
+    declare_parameter("rate_noise_stddev",  0.0);   // rad/s
+    declare_parameter("vel_noise_stddev",   0.0);   // rad/s — output noise
+    declare_parameter("impulse_magnitude",  0.0);   // rad/s — periodic disturbance
+    declare_parameter("impulse_period_s",   5.0);   // s
 
     rng_ = std::mt19937(std::random_device{}());
 
-    // Kalman filter initialization
-    // state: [angle; bias]
-    x_.fill(0.0);
+    // ── Kalman filter setup ───────────────────────────────────────────────
+    kf_.Q_angle = 1e-5;
+    kf_.Q_rate  = 1e-3;
+    kf_.R_angle = 0.01;
+    kf_.R_rate  = 0.01;
+    kf_.reset();
 
-    P_[0] = {1.0, 0.0};
-    P_[1] = {0.0, 1.0};
+    // ── ROS subscriptions & publishers ───────────────────────────────────
+    imu_sub_   = create_subscription<sensor_msgs::msg::Imu>(
+      "/imu_plugin/out", 10,
+      std::bind(&BalanceController::imu_callback, this, _1));
+    joint_sub_ = create_subscription<sensor_msgs::msg::JointState>(
+      "/joint_states", 10,
+      std::bind(&BalanceController::joint_callback, this, _1));
 
-    Q_angle_ = 0.001;
-    Q_bias_ = 0.003;
-    R_measure_ = 0.03;
+    left_cmd_pub_  = create_publisher<std_msgs::msg::Float64MultiArray>(
+      "/left_wheel_controller/commands", 10);
+    right_cmd_pub_ = create_publisher<std_msgs::msg::Float64MultiArray>(
+      "/right_wheel_controller/commands", 10);
 
-    // Subscribers
-    imu_sub_ = create_subscription<sensor_msgs::msg::Imu>("/imu_plugin/out", 10, std::bind(&BalanceController::imu_callback, this, _1));
-    joint_sub_ = create_subscription<sensor_msgs::msg::JointState>("/joint_states", 10, std::bind(&BalanceController::joint_callback, this, _1));
+    last_time_         = rclcpp::Time(0, 0, RCL_ROS_TIME);
+    last_impulse_time_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
+    integral_          = 0.0;
+    imu_msg_count_     = 0;
+    joint_msg_count_   = 0;
+    fallen_state_      = false;
 
-    // Publishers (effort commands)
-    left_cmd_pub_ = create_publisher<std_msgs::msg::Float64MultiArray>("/left_wheel_controller/commands", 10);
-    right_cmd_pub_ = create_publisher<std_msgs::msg::Float64MultiArray>("/right_wheel_controller/commands", 10);
-
-    last_time_ = this->now();
-    last_impulse_time_ = this->now();
-    integral_ = 0.0;
-    prev_error_ = 0.0;
+    RCLCPP_INFO(get_logger(), "BalanceController ready  P=%.1f  I=%.1f  D=%.1f",
+      p_gain_, i_gain_, d_gain_);
   }
 
 private:
-  // Subscribers and publishers
-  rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;
-  rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_sub_;
-  rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr left_cmd_pub_, right_cmd_pub_;
+  // ── ROS handles ──────────────────────────────────────────────────────────
+  rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr        imu_sub_;
+  rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr  joint_sub_;
+  rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr  left_cmd_pub_;
+  rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr  right_cmd_pub_;
 
-  // PID state
+  // ── PID state ─────────────────────────────────────────────────────────────
   double p_gain_, i_gain_, d_gain_;
-  double integral_, prev_error_;
+  double integral_;
 
-  // Kalman filter state
-  std::array<double,2> x_;          // angle, bias
-  std::array<std::array<double,2>,2> P_; // error covariance
-  double Q_angle_, Q_bias_, R_measure_;
+  // ── Kalman filter ──────────────────────────────────────────────────────────
+  KalmanFilter kf_;
 
+  // ── Timing / bookkeeping ───────────────────────────────────────────────────
   rclcpp::Time last_time_;
-  std::mt19937 rng_;
   rclcpp::Time last_impulse_time_;
+  std::mt19937 rng_;
+  int  imu_msg_count_;
+  int  joint_msg_count_;
+  bool fallen_state_;
 
-  // Kalman filter update
-  double kalman_update(double newRate, double newAngle, double dt) {
-    // Predict
-    x_[0] += dt * (newRate - x_[1]);
-    P_[0][0] += dt * (dt*P_[1][1] - P_[0][1] - P_[1][0] + Q_angle_);
-    P_[0][1] -= dt * P_[1][1];
-    P_[1][0] -= dt * P_[1][1];
-    P_[1][1] += Q_bias_ * dt;
-
-    // Update
-    double y = newAngle - x_[0];
-    double S = P_[0][0] + R_measure_;
-    double K0 = P_[0][0] / S;
-    double K1 = P_[1][0] / S;
-
-    x_[0] += K0 * y;
-    x_[1] += K1 * y;
-
-    double P00 = P_[0][0];
-    double P01 = P_[0][1];
-    double P10 = P_[1][0];
-    double P11 = P_[1][1];
-
-    P_[0][0] = P00 - K0 * P00;
-    P_[0][1] = P01 - K0 * P01;
-    P_[1][0] = P10 - K1 * P00;
-    P_[1][1] = P11 - K1 * P01;
-
-    return x_[0];
+  // ── Publish velocity to both wheels ───────────────────────────────────────
+  // left = +u, right = −u (mirrored joint axes -> same physical direction)
+  void publish_velocity(double left_vel, double right_vel) {
+    std_msgs::msg::Float64MultiArray l, r;
+    l.data = {left_vel};
+    r.data = {right_vel};
+    left_cmd_pub_->publish(l);
+    right_cmd_pub_->publish(r);
   }
 
+  // ── IMU callback — runs the full estimation + control loop ────────────────
   void imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg) {
-    // Use quaternion for angle
-    tf2::Quaternion q(
-      msg->orientation.x,
-      msg->orientation.y,
-      msg->orientation.z,
-      msg->orientation.w);
-    tf2::Matrix3x3 m(q);
+    imu_msg_count_++;
+
+    // Extract roll angle and roll rate from IMU
+    tf2::Quaternion q(msg->orientation.x, msg->orientation.y,
+                      msg->orientation.z, msg->orientation.w);
     double roll, pitch, yaw;
-    m.getRPY(roll, pitch, yaw);
-    double newAngle = pitch;
-    double newRate = msg->angular_velocity.y;
+    tf2::Matrix3x3(q).getRPY(roll, pitch, yaw);
 
-    // Inject sensor noise
-    double angle_std = get_parameter("angle_noise_stddev").as_double();
-    double rate_std  = get_parameter("rate_noise_stddev").as_double();
-    if (angle_std > 0.0) newAngle += std::normal_distribution<double>(0.0, angle_std)(rng_);
-    if (rate_std  > 0.0) newRate  += std::normal_distribution<double>(0.0, rate_std)(rng_);
+    double meas_angle = roll;
+    double meas_rate  = msg->angular_velocity.x;
 
-    // RCLCPP_INFO(get_logger(), "Got IMU: angle=%.3f rate=%.3f", newAngle, newRate);
+    // Optional noise injection (set via ros2 param set; defaults at 0.0)
+    double a_std = get_parameter("angle_noise_stddev").as_double();
+    double r_std = get_parameter("rate_noise_stddev").as_double();
+    if (a_std > 0.0) meas_angle += std::normal_distribution<double>(0.0, a_std)(rng_);
+    if (r_std > 0.0) meas_rate  += std::normal_distribution<double>(0.0, r_std)(rng_);
 
-    auto now = this->now();
-    double dt = (now - last_time_).seconds();
+    // ── dt ────────────────────────────────────────────────────────────────
+    // Using IMU header stamp, not this->now(), because Gazebo's sim clock
+    // arrives asynchronously and causes spurious dt=0 at startup.
+    rclcpp::Time now = msg->header.stamp;
+    double dt = (last_time_.nanoseconds() == 0)
+                  ? 0.0 : (now - last_time_).seconds();
+    if (dt < 0.0 || dt > 1.0) { last_time_ = now; return; }  // sim reset / jump
+    if (dt == 0.0)             { last_time_ = now; return; }  // first message
+    last_time_ = now;
 
-    // Guard against huge dt on first real tick
-    if (dt <= 0.0 || dt > 1.0) {
-      last_time_ = now;
+    // ── Kalman filter ─────────────────────────────────────────────────────
+    double filtered_angle = kf_.step(meas_angle, meas_rate, dt);
+    double filtered_rate  = kf_.rate();
+
+    // ── Fallen-over guard ─────────────────────────────────────────────────
+    bool just_fell = !fallen_state_ && (std::abs(filtered_angle) > FALLEN_THRESHOLD);
+    bool recovered =  fallen_state_ && (std::abs(filtered_angle) < FALLEN_THRESHOLD * 0.7);
+
+    if (just_fell) {
+      fallen_state_ = true;
+      integral_     = 0.0;
+      RCLCPP_WARN(get_logger(),
+        "[FALLEN] %.2f° > %.2f° — zeroing output. Reset the simulation.",
+        filtered_angle * 180.0 / M_PI, FALLEN_THRESHOLD * 180.0 / M_PI);
+    }
+    if (recovered) {
+      fallen_state_ = false;
+      RCLCPP_INFO(get_logger(), "[RECOVERED] back inside threshold — resuming.");
+    }
+    if (fallen_state_) {
+      publish_velocity(0.0, 0.0);
+      RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 1000,
+        "[FALLEN] %.1f° — waiting for sim reset", filtered_angle * 180.0 / M_PI);
       return;
     }
 
-    double filtered_angle = kalman_update(newRate, newAngle, dt);
+    // ── PID ───────────────────────────────────────────────────────────────
+    double balance_point = get_parameter("balance_point").as_double();
+    double error         = balance_point - filtered_angle;
 
-    // PID on angle
-    double error = 0.0 - filtered_angle;
-    integral_ += error * dt;
-    // Clamp integral to prevent windup. Without this, 7+ seconds of tilt before
-    // the controller activates would build up a huge integral that launches the robot
-    // into the air.
-    integral_ = std::clamp(integral_, -5.0, 5.0);
-    double derivative = (error - prev_error_) / dt;
-    double control = p_gain_ * error + i_gain_ * integral_ + d_gain_ * derivative;
-    prev_error_ = error;
-
-    std_msgs::msg::Float64MultiArray cmd;
-
-    // Torque output noise
-    double torque_std = get_parameter("torque_noise_stddev").as_double();
-    if (torque_std > 0.0) control += std::normal_distribution<double>(0.0, torque_std)(rng_);
-
-    // Periodic impulse disturbance
-    double impulse_mag    = get_parameter("impulse_magnitude").as_double();
-    double impulse_period = get_parameter("impulse_period_s").as_double();
-    double impulse = 0.0;
-    if (impulse_mag > 0.0 && (now - last_impulse_time_).seconds() >= impulse_period) {
-      impulse = impulse_mag;
-      last_impulse_time_ = now;
-      RCLCPP_INFO(get_logger(), "Applying disturbance impulse: %.2f Nm", impulse_mag);
+    // Anti-windup: only accumulate when not saturated
+    double u_preview = p_gain_ * error + i_gain_ * integral_ + d_gain_ * (-filtered_rate);
+    bool   saturated = std::abs(u_preview) > MAX_VEL;
+    if (!saturated) {
+      integral_ += error * dt;
+      integral_  = std::clamp(integral_, -5.0, 5.0);
     }
 
-    cmd.data = {control + impulse};
+    double p_term = p_gain_ * error;
+    double i_term = i_gain_ * integral_;
+    double d_term = d_gain_ * (-filtered_rate);
+    double u      = std::clamp(p_term + i_term + d_term, -MAX_VEL, MAX_VEL);
 
-    // send same command to both wheels for balancing
-    left_cmd_pub_->publish(cmd);
-    right_cmd_pub_->publish(cmd);
+    // Optional output noise
+    double v_std = get_parameter("vel_noise_stddev").as_double();
+    if (v_std > 0.0) u += std::normal_distribution<double>(0.0, v_std)(rng_);
 
-    //RCLCPP_INFO(get_logger(), "Got IMU: angle=%.3f control=%.3f", filtered_angle, control);
+    // Optional periodic disturbance impulse (set via ros2 param set)
+    double impulse_mag    = get_parameter("impulse_magnitude").as_double();
+    double impulse_period = get_parameter("impulse_period_s").as_double();
+    double impulse        = 0.0;
+    if (impulse_mag > 0.0 &&
+        impulse_period > 0.0 &&
+        (now - last_impulse_time_).seconds() >= impulse_period) {
+      impulse            = impulse_mag;
+      last_impulse_time_ = now;
+      RCLCPP_INFO(get_logger(), "[IMPULSE] %.2f rad/s", impulse_mag);
+    }
 
+    publish_velocity(u + impulse, -(u + impulse));
+
+    RCLCPP_INFO(get_logger(),
+      "angle=%6.3f  rate=%6.3f  err=%6.3f  "
+      "P=%6.2f  I=%6.2f  D=%6.2f  u=%6.2f%s",
+      filtered_angle, filtered_rate, error,
+      p_term, i_term, d_term, u,
+      saturated ? "  [SAT]" : "");
   }
 
+  // ── Joint state callback, diagnostic only ────────────────────────────────
   void joint_callback(const sensor_msgs::msg::JointState::SharedPtr msg) {
-    // wheel position will be used later for keyboard control of the bot
+    joint_msg_count_++;
+    if (joint_msg_count_ > 3 && !fallen_state_) {
+      for (size_t i = 0; i < msg->name.size(); ++i) {
+        if ((msg->name[i] == "left_wheel_joint" ||
+             msg->name[i] == "right_wheel_joint") &&
+             i < msg->velocity.size() &&
+             std::abs(msg->velocity[i]) < 1e-6) {
+          RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000,
+            "[WARN] %s velocity≈0 while controlling — "
+            "is the velocity interface active?", msg->name[i].c_str());
+        }
+      }
+    }
   }
 };
 
