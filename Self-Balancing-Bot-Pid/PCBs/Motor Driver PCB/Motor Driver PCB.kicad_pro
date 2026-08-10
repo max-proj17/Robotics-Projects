@@ -492,9 +492,23 @@
         "diff_pair_width": 0.2,
         "microvia_diameter": 0.3,
         "microvia_drill": 0.1,
-        "name": "Power",
+        "name": "MotorPhase",
         "pcb_color": "rgba(0, 0, 0, 0.000)",
         "priority": 0,
+        "schematic_color": "rgba(0, 0, 0, 0.000)",
+        "track_width": 0.6,
+        "via_diameter": 0.8,
+        "via_drill": 0.4
+      },
+      {
+        "clearance": 0.2,
+        "diff_pair_gap": 0.25,
+        "diff_pair_width": 0.2,
+        "microvia_diameter": 0.3,
+        "microvia_drill": 0.1,
+        "name": "Power",
+        "pcb_color": "rgba(0, 0, 0, 0.000)",
+        "priority": 1,
         "schematic_color": "rgba(0, 0, 0, 0.000)",
         "track_width": 0.8,
         "via_diameter": 0.8,
@@ -514,6 +528,22 @@
       {
         "netclass": "Power",
         "pattern": "GND"
+      },
+      {
+        "netclass": "MotorPhase",
+        "pattern": "/OUT2B"
+      },
+      {
+        "netclass": "MotorPhase",
+        "pattern": "/OUT2A"
+      },
+      {
+        "netclass": "MotorPhase",
+        "pattern": "/OUT1A"
+      },
+      {
+        "netclass": "MotorPhase",
+        "pattern": "/OUT1B"
       }
     ]
   },
