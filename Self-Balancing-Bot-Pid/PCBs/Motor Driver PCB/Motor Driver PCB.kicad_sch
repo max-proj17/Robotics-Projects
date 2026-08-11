@@ -2860,7 +2860,7 @@
 		)
 		(uuid "1d8b6b84-7b25-46da-8feb-85088d8f8f7a")
 	)
-	(text_box "Index:\n(1) - STEP\n(2-4) - MSX\n(5) - DIR\n(6) - ENABLE#\n(7) - DIR (ENCODER)\n(8) - OUT (ENCODER)"
+	(text_box "Index:\n(1) - ENABLE\n(2-4) - MSX\n(5) - STEP\n(6) - DIR (DRIVER)\n(7) - DIR (ENCODER)\n(8) - OUT (ENCODER)"
 		(exclude_from_sim no)
 		(at 21.336 73.66 0)
 		(size 24.13 17.78)

@@ -544,6 +544,14 @@
       {
         "netclass": "MotorPhase",
         "pattern": "/OUT1B"
+      },
+      {
+        "netclass": "MotorPhase",
+        "pattern": "Net-(U1-SENSE1)"
+      },
+      {
+        "netclass": "MotorPhase",
+        "pattern": "Net-(U1-SENSE2)"
       }
     ]
   },

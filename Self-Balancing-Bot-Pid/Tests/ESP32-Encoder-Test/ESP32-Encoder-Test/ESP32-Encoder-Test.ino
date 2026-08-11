@@ -1,7 +1,7 @@
-#define AS5600ADCPIN 12
+#define AS5600ADCPIN 4
 #define ADCRESOLUTION 4095 // 12-bit ADC so max values it can produce: 2^12 = 4096
 #define VREF 3.3  // ESP32 default voltage reference  
-#define ALPHA 0.3 // Digital LPF strength (higher = smoother, but slower)
+#define ALPHA 0.5 // Digital LPF strength (higher = smoother, but slower)
 
 void setup() {
   Serial.begin(115200);
